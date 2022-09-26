@@ -6,7 +6,7 @@ import CustomModal from "../../components/modal/modal";
 import CustomFilter from "../../components/customFilter/customFilter";
 import CustomTable from "../../components/customTable/customTable";
 import { UploadOutlined } from "@ant-design/icons";
-const { Header, Content } = Layout;
+const { Content } = Layout;
 
 const data = [
     {
@@ -362,13 +362,13 @@ const data = [
 const props = {
     beforeUpload: (file) => {
         console.log(file);
-        const isPNG = file.type === "application/pdf";
+        const isCSV = file.type === "text/csv";
 
-        if (!isPNG) {
-            message.error(`${file.name} is not a png file`);
+        if (!isCSV) {
+            message.error(`${file.name} is not a csv file`);
         }
 
-        return isPNG || Upload.LIST_IGNORE;
+        return isCSV || Upload.LIST_IGNORE;
     },
     onChange: (info) => {
         console.log(info.fileList);
@@ -380,6 +380,8 @@ const MainArea = () => {
     const [minSalary, setMinSalary] = useState(null);
     const [maxSalary, setMaxSalary] = useState(null);
     const [empData, setEmpData] = useState(data);
+    const [file, setFile] = useState();
+    const [array, setArray] = useState([]);
     const [tableParams, setTableParams] = useState({
         pagination: {
             current: 1,
@@ -414,22 +416,61 @@ const MainArea = () => {
         setEmpData(data);
     };
 
+    const fileReader = new FileReader();
+
+    const handleOnChange = (e) => {
+        setFile(e.target.files[0]);
+    };
+
+    const csvFileToArray = (string) => {
+        const csvHeader = string.slice(0, string.indexOf("\n")).split(",");
+        const csvRows = string.slice(string.indexOf("\n") + 1).split("\n");
+        const filterCsvRows = csvRows.filter(i => i.charAt(0) !== '#')
+
+        const array = filterCsvRows.map((i) => {
+            const values = i.split(",");
+            const obj = csvHeader.reduce((object, header, index) => {
+                object[header] = values[index];
+                return object;
+            }, {});
+            return obj;
+        });
+
+        setEmpData([...empData, ...array]);
+    };
+
+    const handleOnSubmit = (e) => {
+        e.preventDefault();
+
+        if (file) {
+            fileReader.onload = function (event) {
+                const text = event.target.result;
+                csvFileToArray(text);
+            };
+
+            fileReader.readAsText(file);
+        }
+    };
+
     return (
         <Layout className="main-area-layout">
             <Layout className="site-layout">
-                <Header
-                    className="site-layout-background main-area-header"
-                    style={{
-                        padding: 0,
-                    }}
-                >
-                    <Button
-                        className="main-area-upload-button"
-                        onClick={() => setModal2Open(true)}
+                <form>
+                    <input
+                        type={"file"}
+                        id={"csvFileInput"}
+                        accept={".csv"}
+                        onChange={handleOnChange}
+                    />
+
+                    <button
+                        onClick={(e) => {
+                            handleOnSubmit(e);
+                        }}
                     >
-                        Click to upload
-                    </Button>
-                </Header>
+                        IMPORT CSV
+                    </button>
+                </form>
                 <Content
                     className="site-layout-background"
                     style={{
